@@ -69,6 +69,7 @@
     const status = params.get("status");
     const name = params.get("name");
     const message = params.get("message");
+    const kind = params.get("kind") === "note" ? "Note" : "Charger";
 
     const circleEl = document.getElementById("statusCircle");
     const titleEl = document.getElementById("title");
@@ -78,12 +79,13 @@
     let symbol = "✓", title = "Done", text = "", accent = "#3DDC84";
 
     if (status === "approved") {
-      symbol = "✓"; title = "Charger Approved";
-      text = name ? `"${name}" is now live on the map for everyone.` : "The charger is now live on the map.";
+      symbol = "✓"; title = `${kind} Approved`;
+      const liveText = kind === "Note" ? "is now visible to other users." : "is now live on the map for everyone.";
+      text = name ? `"${name}" ${liveText}` : `The ${kind.toLowerCase()} is now live.`;
       accent = "#3DDC84";
     } else if (status === "rejected") {
-      symbol = "✕"; title = "Charger Rejected";
-      text = name ? `"${name}" has been rejected and will stay hidden.` : "The charger has been rejected.";
+      symbol = "✕"; title = `${kind} Rejected`;
+      text = name ? `"${name}" has been rejected and will stay hidden.` : `The ${kind.toLowerCase()} has been rejected.`;
       accent = "#E8544B";
     } else if (status === "unauthorized") {
       symbol = "!"; title = "Not Authorized";
