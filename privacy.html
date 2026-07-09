@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+  <html lang="en">
+  <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Volts Up</title>
+  <style>
+    :root {
+      --bg: #0A0F0C;
+      --surface: #121815;
+      --surface-elevated: #1A211D;
+      --accent: #3DDC84;
+      --text-primary: #F5F7F5;
+      --text-secondary: #C7CFC9;
+      --text-tertiary: #7A857E;
+      --border: #232B26;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text-secondary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+    }
+    .wrap {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .header img {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+    }
+    .header .name {
+      color: var(--text-primary);
+      font-weight: 800;
+      font-size: 18px;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0 32px;
+    }
+    h1 {
+      color: var(--text-primary);
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 4px;
+    }
+    .updated {
+      color: var(--text-tertiary);
+      font-size: 13px;
+      margin-bottom: 32px;
+    }
+    h2 {
+      color: var(--text-primary);
+      font-size: 17px;
+      font-weight: 700;
+      margin: 32px 0 10px;
+    }
+    p, li { font-size: 14.5px; color: var(--text-secondary); }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+    strong { color: var(--text-primary); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      font-size: 13px;
+      color: var(--text-tertiary);
+      margin-bottom: 32px;
+    }
+    .footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+  </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="header">
+        <img src="https://madzzboi.github.io/volts-up-confirm/ChatGPT_Image_Jul_7_2026_01_14_15_PM.png" alt="Volts Up" />
+        <span class="name">Volts Up</span>
+      </div>
+      <hr />
+
+      <h1>Privacy Policy</h1>
+      <div class="updated">Last updated: 9 July 2026</div>
+
+      <div class="callout">
+        This policy explains what Volts Up ("the app", "we", "us") collects and how it's used. It's written to plainly reflect exactly how the app works today.
+      </div>
+
+      <h2>Your account is stored on your device, not our servers</h2>
+      <p>When you create an account, we ask for your first name, last name, mobile number, email address, your EV model, and (optionally) a profile photo. This information is stored locally on your phone. We don't operate a central database of user accounts — there's no Volts Up server holding a copy of your profile.</p>
+
+      <h2>Phone number verification</h2>
+      <p>To confirm your mobile number during sign-up, we send a one-time SMS code via a verification service (Twilio). Your number is used only to deliver and check that code — it is not stored on our servers afterwards.</p>
+
+      <h2>Welcome email</h2>
+      <p>If you provide an email address when creating an account, we send a one-off welcome email to that address. We don't send you anything else unless you separately opt in to EV news updates in your profile settings, and you can stop that at any time.</p>
+
+      <h2>Location</h2>
+      <p>With your permission, Volts Up uses your device's location to show nearby chargers, calculate your live driving range on a map, plan trips from your current position, and — if you turn them on — send you local alerts when you're near a saved charger or a stop on a planned trip. This location processing happens on your device. Location data isn't collected or stored by us; it may be sent to Apple Maps, Open Charge Map, or similar routing/mapping services solely to fetch the information you've asked for (e.g. directions), governed by those providers' own privacy terms.</p>
+
+      <h2>Community submissions</h2>
+      <p>If you add a charger, leave a note, or rate a charger, that submission — including the name associated with your account at the time — is sent to our database and (for chargers and notes) reviewed before it appears publicly on the shared community map. Once submitted, this content becomes part of the shared map data and isn't automatically deleted if you later delete your account, since it isn't linked back to your account by a permanent ID. You can request removal of a specific submission by contacting us.</p>
+
+      <h2>What we don't do</h2>
+      <ul>
+        <li>We don't use third-party advertising trackers or sell your data.</li>
+        <li>We don't run analytics software that profiles or tracks you across other apps or websites.</li>
+        <li>We don't share your account details with anyone outside the services listed in this policy.</li>
+      </ul>
+
+      <h2>Third-party services we rely on</h2>
+      <ul>
+        <li><strong>Apple Maps / MapKit</strong> — directions, routing, and map display.</li>
+        <li><strong>Open Charge Map</strong> and <strong>OpenStreetMap (Overpass API)</strong> — public charger and fuel station data.</li>
+        <li><strong>Twilio</strong> — SMS delivery for account verification codes.</li>
+        <li><strong>Supabase</strong> — storage for community-submitted chargers, notes, and ratings.</li>
+        <li><strong>Resend</strong> — delivery of the welcome email and any opted-in news updates.</li>
+      </ul>
+      <p>Each of these providers processes the minimum data needed to perform its function and is bound by its own privacy terms.</p>
+
+      <h2>Data sent overseas</h2>
+      <p>Some of the providers above are based outside Australia (Twilio, Supabase, Resend, and Apple all operate infrastructure in the United States and elsewhere), so information handled by them — such as your phone number during verification, or a community submission — may be processed on servers outside Australia. Each provider maintains its own security and privacy standards; we choose providers that publish clear privacy and security commitments.</p>
+
+      <h2>Your rights</h2>
+      <p>You can access and correct your profile details at any time in Profile → Edit Profile, and delete your account and locally stored data at any time in Profile → Privacy → Delete Account. If you have a question or concern about how your information is handled that isn't answered here, contact us — see below.</p>
+
+      <h2>Deleting your account</h2>
+      <p>You can permanently delete your account and all locally stored data at any time from Profile → Privacy → Delete Account in the app. This removes your profile, favourites, trip history, streaks, and savings stats from your device immediately. As noted above, past community submissions aren't retroactively removed by this action.</p>
+
+      <h2>Children</h2>
+      <p>Volts Up isn't directed at children. You must be at least 13 years old to create an account, and if you're under 18, you 
+    <h2>Children</h2>
+    <p>Volts Up isn't directed at children. You must be at least 13 years old to create an account, and if you're under 18, you should have a parent or guardian's permission to use the app.</p>
+
+    <h2>Changes to this policy</h2>
+    <p>If this policy changes in a meaningful way, we'll update the "Last updated" date above. Continued use of the app after a change means you accept the update.</p>
+
+    <h2>Contact</h2>
+    <p>Questions about this policy or your data — email <a href="mailto:info@evbygenz.com">info@evbygenz.com</a>.</p>
+
+    <div class="footer">
+      Volts Up is made by EV by Gen Z. See also our <a href="https://madzzboi.github.io/volts-up-confirm/terms.html">Terms of Use</a>.
+    </div>
+  </div>
+</body>
+</html>
