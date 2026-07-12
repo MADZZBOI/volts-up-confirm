@@ -399,11 +399,14 @@ async function loadTickets() {
         <div class="meta">#${t.id} · ${esc(t.category)} · ${fmtDate(t.created_at)} · ${esc(t.name ?? "")} ${t.email ? "&lt;" + esc(t.email) + "&gt;" : ""} ${t.app_version ? "· v" + esc(t.app_version) : ""}</div>
         <div class="body">${esc(t.detail)}</div>
         <div class="actions">
-          <input type="text" id="note-${t.id}" placeholder="Internal note…" value="${esc(t.admin_note ?? "")}" style="flex:1;min-width:180px">
+          <input type="text" id="reply-${t.id}" placeholder="Reply to user — shown in their app, emailed when resolved…" value="${esc(t.public_reply ?? "")}" style="flex:1;min-width:220px">
+          <button class="neutral" onclick="saveReply(${t.id})">Save reply</button>
+        </div>
+        <div class="actions">
+          <input type="text" id="note-${t.id}" placeholder="Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" style="flex:1;min-width:180px">
           <button class="neutral" onclick="saveNote(${t.id})">Save note</button>
-          ${t.status !== "in_progress" ? `<button class="neutral" onclick="setTicket(${t.id}, 'in_progress')">In progress</button>` : ""}
-          ${t.status !== "closed" ? `<button class="approve" onclick="setTicket(${t.id}, 'closed')">Close</button>` : `<button class="neutral" onclick="setTicket(${t.id}, 'open')">Reopen</button>`}
-          ${t.email ? `<a class="neutral" style="padding:9px 16px" href="mailto:${esc(t.email)}?subject=${encodeURIComponent("Re: " + t.subject + " — Charge Nomad support")}">Reply by email</a>` : ""}
+          ${t.status !== "in_progress" && t.status !== "closed" ? `<button class="neutral" onclick="setTicket(${t.id}, 'in_progress')">In progress</button>` : ""}
+          ${t.status !== "closed" ? `<button class="approve" onclick="resolveTicket(${t.id}, ${JSON.stringify(esc(t.email ?? ""))})">Resolve${t.email ? " &amp; email" : ""}</button>` : `<button class="neutral" onclick="setTicket(${t.id}, 'open')">Reopen</button>`}
           <button class="delete" onclick="deleteTicket(${t.id})">Delete</button>
         </div>
       </div>`;
@@ -425,6 +428,19 @@ async function setTicket(id, status) {
 async function saveNote(id) {
   await api("updateTicket", { id, admin_note: document.getElementById("note-" + id).value });
   toast("Note saved");
+}
+async function saveReply(id) {
+  await api("updateTicket", { id, public_reply: document.getElementById("reply-" + id).value });
+  toast("Reply saved — visible in the user's app");
+}
+async function resolveTicket(id, email) {
+  const msg = email
+    ? `Resolve this ticket? ${email} will get a resolution email (including your reply, if you wrote one).`
+    : "Resolve this ticket? The user will see it as Resolved in the app.";
+  if (!confirm(msg)) return;
+  const r = await api("updateTicket", { id, status: "closed", public_reply: document.getElementById("reply-" + id).value });
+  toast(r.emailed ? "Resolved — user emailed ✓" : "Resolved ✓");
+  loadTickets();
 }
 async function deleteTicket(id) {
   if (!confirm("Permanently delete this ticket?")) return;
