@@ -76,6 +76,16 @@
     padding: 18px 20px; margin-bottom: 12px; transition: border-color .15s;
   }
   .card:hover { border-color: var(--border2); }
+  .card .summary { display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
+  .card .summary .chev { color: var(--text3); font-size: 12px; transition: transform .15s; flex-shrink: 0; }
+  .card.open .summary .chev { transform: rotate(90deg); }
+  .card .summary .sub { font-size: 13px; color: var(--text3); margin-top: 1px; }
+  .card .summary .grow { flex: 1; min-width: 0; }
+  .card .summary .grow h3 { margin: 0; }
+  .card .summary .sub, .card .summary .grow h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .card .details { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .card.open .details { display: block; }
+  .card .quick { display: flex; gap: 8px; flex-shrink: 0; }
   .card h3 { font-size: 15px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .card .meta { font-size: 12px; color: var(--text3); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
   .card .body { color: var(--text2); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
@@ -272,6 +282,7 @@ function showTab(name) {
   }
 }
 function refreshAll() { loadModeration(); loadTickets(); loadSignups(); loadContent(); }
+function toggleCard(el) { el.parentElement.classList.toggle("open"); }
 
 // ── Moderation ────────────────────────────────────────────────────────
 async function loadModeration() {
@@ -292,38 +303,66 @@ async function loadModeration() {
       </div>`;
 
     html += '<h2 class="section">Pending chargers</h2>';
-    html += chargers?.length ? chargers.map(c => `
+    html += chargers?.length ? chargers.map(c => {
+      const place = [c.town, c.state_or_province].filter(Boolean).join(", ");
+      const sub = [place, c.power_kw ? c.power_kw + " kW" : "", fmtDate(c.created_at)].filter(Boolean).join(" · ");
+      return `
       <div class="card">
-        <h3>${esc(c.title ?? "Charger #" + c.id)} <span class="pill pending">pending</span></h3>
-        <div class="meta">#${c.id} · ${fmtDate(c.created_at)}</div>
-        ${kvBlock(c, ["id", "title", "created_at", "status"])}
-        <div class="actions">
-          <button class="approve" onclick="moderate('charger', ${c.id}, 'approve')">Approve</button>
-          <button class="reject" onclick="moderate('charger', ${c.id}, 'reject')">Reject</button>
+        <div class="summary" onclick="toggleCard(this)">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>${esc(c.title ?? "Charger #" + c.id)}</h3>
+            <span class="sub">${esc(sub)}</span>
+          </div>
+          <div class="quick">
+            <button class="approve" onclick="event.stopPropagation(); moderate('charger', ${c.id}, 'approve')">Approve</button>
+            <button class="reject" onclick="event.stopPropagation(); moderate('charger', ${c.id}, 'reject')">Reject</button>
+          </div>
         </div>
-      </div>`).join("") : '<div class="empty">No pending chargers</div>';
+        <div class="details">
+          <div class="meta">#${c.id} · ${fmtDate(c.created_at)}</div>
+          ${kvBlock(c, ["id", "title", "created_at", "status"])}
+        </div>
+      </div>`;
+    }).join("") : '<div class="empty">No pending chargers</div>';
 
     html += '<h2 class="section">Pending notes</h2>';
     html += notes?.length ? notes.map(n => `
       <div class="card">
-        <div class="body">${esc(n.text)}</div>
-        <div class="meta" style="margin-top:8px">#${n.id} · ${fmtDate(n.created_at)}</div>
-        ${kvBlock(n, ["id", "text", "created_at", "status"])}
-        <div class="actions">
-          <button class="approve" onclick="moderate('note', ${n.id}, 'approve')">Approve</button>
-          <button class="reject" onclick="moderate('note', ${n.id}, 'reject')">Reject</button>
+        <div class="summary" onclick="toggleCard(this)">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>${esc(String(n.text ?? "").slice(0, 90))}${String(n.text ?? "").length > 90 ? "…" : ""}</h3>
+            <span class="sub">${fmtDate(n.created_at)}</span>
+          </div>
+          <div class="quick">
+            <button class="approve" onclick="event.stopPropagation(); moderate('note', ${n.id}, 'approve')">Approve</button>
+            <button class="reject" onclick="event.stopPropagation(); moderate('note', ${n.id}, 'reject')">Reject</button>
+          </div>
+        </div>
+        <div class="details">
+          <div class="body">${esc(n.text)}</div>
+          <div class="meta" style="margin-top:8px">#${n.id} · ${fmtDate(n.created_at)}</div>
+          ${kvBlock(n, ["id", "text", "created_at", "status"])}
         </div>
       </div>`).join("") : '<div class="empty">No pending notes</div>';
 
     html += '<h2 class="section">Content reports</h2>';
     html += reports?.length ? reports.map(r => `
       <div class="card">
-        <h3>${esc(r.subject ?? "Report #" + r.id)}</h3>
-        <div class="meta">#${r.id} · ${esc(r.kind ?? "")} · ${fmtDate(r.created_at)}</div>
-        <div class="body">${esc(r.detail ?? "")}</div>
-        ${kvBlock(r, ["id", "subject", "kind", "created_at", "detail"])}
-        <div class="actions">
-          <button class="delete" onclick="deleteReport(${r.id})">Dismiss report</button>
+        <div class="summary" onclick="toggleCard(this)">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>${esc(r.subject ?? "Report #" + r.id)}</h3>
+            <span class="sub">${esc(r.kind ?? "")} · ${fmtDate(r.created_at)}</span>
+          </div>
+          <div class="quick">
+            <button class="delete" onclick="event.stopPropagation(); deleteReport(${r.id})">Dismiss</button>
+          </div>
+        </div>
+        <div class="details">
+          <div class="body">${esc(r.detail ?? "")}</div>
+          ${kvBlock(r, ["id", "subject", "kind", "created_at", "detail"])}
         </div>
       </div>`).join("") : '<div class="empty">No reports</div>';
 
@@ -435,20 +474,45 @@ async function loadContent() {
     const q = document.getElementById("contentQ").value;
     const { notes, chargers } = await api("content", { q });
     let html = '<h2 class="section" style="margin-top:0">Community chargers</h2>';
-    html += chargers?.length ? chargers.map(c => `
+    html += chargers?.length ? chargers.map(c => {
+      const place = [c.town, c.state_or_province].filter(Boolean).join(", ");
+      const sub = [place, fmtDate(c.created_at)].filter(Boolean).join(" · ");
+      return `
       <div class="card">
-        <h3>${esc(c.title ?? "Charger #" + c.id)} <span class="pill ${esc(c.status ?? "")}">${esc(c.status ?? "")}</span></h3>
-        <div class="meta">#${c.id} · ${fmtDate(c.created_at)}</div>
-        ${kvBlock(c, ["id", "title", "created_at", "status"])}
-        <div class="actions"><button class="delete" onclick="deleteContent('charger', ${c.id})">Delete</button></div>
-      </div>`).join("") : '<div class="empty">No chargers</div>';
+        <div class="summary" onclick="toggleCard(this)">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>${esc(c.title ?? "Charger #" + c.id)} <span class="pill ${esc(c.status ?? "")}">${esc(c.status ?? "")}</span></h3>
+            <span class="sub">${esc(sub)}</span>
+          </div>
+          <div class="quick">
+            <button class="delete" onclick="event.stopPropagation(); deleteContent('charger', ${c.id})">Delete</button>
+          </div>
+        </div>
+        <div class="details">
+          <div class="meta">#${c.id} · ${fmtDate(c.created_at)}</div>
+          ${kvBlock(c, ["id", "title", "created_at", "status"])}
+        </div>
+      </div>`;
+    }).join("") : '<div class="empty">No chargers</div>';
     html += '<h2 class="section">Notes</h2>';
     html += notes?.length ? notes.map(n => `
       <div class="card">
-        <div class="body">${esc(n.text)}</div>
-        <div class="meta" style="margin-top:8px">#${n.id} · ${fmtDate(n.created_at)} · <span class="pill ${esc(n.status ?? "")}">${esc(n.status ?? "")}</span></div>
-        ${kvBlock(n, ["id", "text", "created_at", "status"])}
-        <div class="actions"><button class="delete" onclick="deleteContent('note', ${n.id})">Delete</button></div>
+        <div class="summary" onclick="toggleCard(this)">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>${esc(String(n.text ?? "").slice(0, 90))}${String(n.text ?? "").length > 90 ? "…" : ""} <span class="pill ${esc(n.status ?? "")}">${esc(n.status ?? "")}</span></h3>
+            <span class="sub">${fmtDate(n.created_at)}</span>
+          </div>
+          <div class="quick">
+            <button class="delete" onclick="event.stopPropagation(); deleteContent('note', ${n.id})">Delete</button>
+          </div>
+        </div>
+        <div class="details">
+          <div class="body">${esc(n.text)}</div>
+          <div class="meta" style="margin-top:8px">#${n.id} · ${fmtDate(n.created_at)}</div>
+          ${kvBlock(n, ["id", "text", "created_at", "status"])}
+        </div>
       </div>`).join("") : '<div class="empty">No notes</div>';
     el.innerHTML = html;
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
