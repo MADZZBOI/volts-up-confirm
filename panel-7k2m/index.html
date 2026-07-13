@@ -13,6 +13,8 @@
     --accent: #3DDC84; --accent-dim: rgba(61,220,132,.12);
     --warn: #E8B84B; --warn-dim: rgba(232,184,75,.12);
     --danger: #F0655D; --danger-dim: rgba(232,84,75,.12);
+    --blue: #5BA8F5; --blue-dim: rgba(91,168,245,.12);
+    --pink: #E87BC9; --pink-dim: rgba(232,123,201,.12);
     --radius: 16px;
   }
   * { box-sizing: border-box; margin: 0; }
@@ -66,9 +68,53 @@
   .stat {
     background: linear-gradient(160deg, var(--elevated), var(--card));
     border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px;
+    transition: transform .12s, border-color .15s;
   }
   .stat .n { font-size: 28px; font-weight: 800; letter-spacing: -.02em; color: var(--accent); }
   .stat .l { font-size: 12px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+  .stat .ic { font-size: 18px; margin-bottom: 6px; }
+  .stat.click { cursor: pointer; }
+  .stat.click:hover { transform: translateY(-2px); }
+  .stat.green  { border-top: 3px solid var(--accent); }  .stat.green .n  { color: var(--accent); }
+  .stat.blue   { border-top: 3px solid var(--blue); }    .stat.blue .n   { color: var(--blue); }
+  .stat.amber  { border-top: 3px solid var(--warn); }    .stat.amber .n  { color: var(--warn); }
+  .stat.pink   { border-top: 3px solid var(--pink); }    .stat.pink .n   { color: var(--pink); }
+
+  .hero { margin: 8px 0 20px; }
+  .hero h1 {
+    font-size: clamp(24px, 5vw, 32px); font-weight: 800; letter-spacing: -.02em;
+    background: linear-gradient(90deg, var(--accent), var(--blue));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p { color: var(--text3); font-size: 14px; margin-top: 4px; }
+
+  /* Full-screen conversation window */
+  #convo {
+    position: fixed; inset: 0; z-index: 9; display: none; flex-direction: column;
+    background:
+      radial-gradient(900px 400px at 50% -150px, rgba(91,168,245,.08), transparent 70%),
+      var(--bg);
+  }
+  #convo.open { display: flex; }
+  .convo-head {
+    display: flex; align-items: center; gap: 12px; padding: 14px clamp(16px, 4vw, 28px);
+    background: rgba(10,15,12,.85); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .convo-head h2 { font-size: 16px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .convo-msgs { flex: 1; overflow-y: auto; padding: 20px clamp(16px, 4vw, 28px); max-width: 800px; width: 100%; margin: 0 auto; }
+  .convo-actions {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px clamp(16px, 4vw, 28px); border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .convo-actions input { width: auto; }
+  .convo-compose {
+    display: flex; gap: 10px; align-items: flex-end; padding: 14px clamp(16px, 4vw, 28px) 24px;
+    border-top: 1px solid var(--border); background: var(--surface);
+  }
+  .convo-compose textarea { flex: 1; max-width: 700px; margin: 0 auto; resize: vertical; min-height: 44px; }
+  .convo-compose .send { background: linear-gradient(135deg, var(--accent), #2BB86A); color: #06130B; padding: 11px 22px; font-weight: 700; }
 
   /* ── Cards ──────────────────────────────────────────── */
   .card {
@@ -234,10 +280,30 @@
 
 <div id="toast"></div>
 
+<!-- Full-screen conversation window: the complete ticket workspace -->
+<div id="convo">
+  <div class="convo-head">
+    <button class="neutral" onclick="closeConvo()">← Back</button>
+    <h2 id="convoTitle"></h2>
+    <span id="convoPill" class="pill"></span>
+    <button class="neutral" onclick="loadConvo()">↻ Refresh</button>
+  </div>
+  <div class="convo-actions" id="convoActions"></div>
+  <div class="convo-msgs" id="convoMsgs"></div>
+  <div class="convo-compose">
+    <select class="tpl" id="convoTpl" onchange="applyConvoTemplate(this)">
+      <option value="">📋 Templates…</option>
+    </select>
+    <textarea id="convoDraft" rows="2" placeholder="Type your reply…"></textarea>
+    <button class="send" onclick="sendConvo()">Send</button>
+  </div>
+</div>
+
 <script>
 const API = "https://rgkhknmscrenydxlrglf.supabase.co/functions/v1/admin-api";
 const ANON = "sb_publishable_hxs2u-HAQ8WrXEi6LJDyMQ_VoIPGPHs";
 let SECRET = sessionStorage.getItem("cn_admin_secret") || "";
+let LAST_TICKETS = [];
 
 async function api(action, extra = {}) {
   const res = await fetch(API, {
@@ -327,18 +393,28 @@ function toggleCheck(i) {
   localStorage.setItem(key, JSON.stringify(state));
   loadHomeChecklist();
 }
+let checklistOpen = false;
+function toggleChecklist() { checklistOpen = !checklistOpen; loadHomeChecklist(); }
 function loadHomeChecklist() {
   const el = document.getElementById("checklist");
   if (!el) return;
   const { state } = checklistState();
   const done = CHECKLIST.filter((_, i) => state[i]).length;
+  const allDone = done === CHECKLIST.length;
   el.innerHTML = `
-    <h2 class="section">Daily checklist · ${done}/${CHECKLIST.length} done today</h2>
-    <div class="card">${CHECKLIST.map((item, i) => `
-      <label class="check ${state[i] ? "done" : ""}">
-        <input type="checkbox" ${state[i] ? "checked" : ""} onchange="toggleCheck(${i})">
-        <span>${esc(item)}</span>
-      </label>`).join("")}
+    <h2 class="section">Daily health check</h2>
+    <div class="card">
+      <div class="summary" onclick="toggleChecklist()">
+        <span class="chev" style="transform:rotate(${checklistOpen ? 90 : 0}deg)">▶</span>
+        <div class="grow"><h3 style="font-size:14px">${allDone ? "All done for today 🎉" : `${done} of ${CHECKLIST.length} checks done today`}</h3></div>
+        <span class="pill ${allDone ? "approved" : "pending"}">${done}/${CHECKLIST.length}</span>
+      </div>
+      ${checklistOpen ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        ${CHECKLIST.map((item, i) => `
+        <label class="check ${state[i] ? "done" : ""}">
+          <input type="checkbox" ${state[i] ? "checked" : ""} onchange="toggleCheck(${i})">
+          <span>${esc(item)}</span>
+        </label>`).join("")}</div>` : ""}
     </div>`;
 }
 async function loadHome() {
@@ -350,44 +426,39 @@ async function loadHome() {
     const greet = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
     const last7 = o.signups.filter(s => s.created_at && Date.now() - new Date(s.created_at) < 7 * 864e5).length;
     const modCount = o.pendingChargers.count + o.pendingNotes.count;
+    const allClear = o.openTickets.count + modCount + o.reports.count === 0;
 
+    // Just the top 3 most recent things that need action, nothing more.
     const attention = [
-      ...o.openTickets.items.map(t => ({ when: t.created_at, icon: "🎫", text: `Ticket: ${t.subject}`, sub: t.status.replace("_", " "), tab: "tickets" })),
-      ...o.pendingChargers.items.map(c => ({ when: c.created_at, icon: "⚡", text: `Charger awaiting review: ${c.title ?? "#" + c.id}`, sub: "pending", tab: "moderation" })),
-      ...o.pendingNotes.items.map(n => ({ when: n.created_at, icon: "📝", text: `Note awaiting review: ${String(n.text ?? "").slice(0, 60)}`, sub: "pending", tab: "moderation" })),
-      ...o.reports.items.map(r => ({ when: r.created_at, icon: "🚩", text: `Report: ${r.subject ?? "#" + r.id}`, sub: "report", tab: "moderation" })),
-    ].sort((a, b) => new Date(b.when) - new Date(a.when)).slice(0, 8);
-
-    const recentSignups = o.signups.slice(0, 5);
+      ...o.openTickets.items.map(t => ({ when: t.created_at, icon: "🎫", text: t.subject, tab: "tickets" })),
+      ...o.pendingChargers.items.map(c => ({ when: c.created_at, icon: "⚡", text: c.title ?? "Charger #" + c.id, tab: "moderation" })),
+      ...o.reports.items.map(r => ({ when: r.created_at, icon: "🚩", text: r.subject ?? "Report #" + r.id, tab: "moderation" })),
+    ].sort((a, b) => new Date(b.when) - new Date(a.when)).slice(0, 3);
 
     el.innerHTML = `
-      <h2 class="section" style="margin-top:0">${greet}, Adam</h2>
-      <div class="stats">
-        <div class="stat"><div class="n">${o.openTickets.count}</div><div class="l">Open tickets</div></div>
-        <div class="stat"><div class="n">${modCount}</div><div class="l">Awaiting moderation</div></div>
-        <div class="stat"><div class="n">${o.reports.count}</div><div class="l">Content reports</div></div>
-        <div class="stat"><div class="n">${last7}</div><div class="l">Signups last 7 days</div></div>
+      <div class="hero">
+        <h1>${greet}, Adam 👋</h1>
+        <p>${allClear ? "All clear. Charge Nomad is humming along nicely." : "A few things could use your eyes today."}</p>
       </div>
 
-      <h2 class="section">Needs your attention</h2>
-      ${attention.length ? attention.map(a => `
-        <div class="card rowlink" onclick="showTab('${a.tab}')">
-          <div class="summary" style="cursor:pointer">
-            <span style="font-size:16px">${a.icon}</span>
-            <div class="grow">
-              <h3 style="font-size:14px">${esc(a.text)}</h3>
-              <span class="sub">${esc(a.sub)} · ${fmtDate(a.when)}</span>
+      <div class="stats">
+        <div class="stat green click" onclick="showTab('tickets')"><div class="ic">🎫</div><div class="n">${o.openTickets.count}</div><div class="l">Open tickets</div></div>
+        <div class="stat blue click" onclick="showTab('moderation')"><div class="ic">⚡</div><div class="n">${modCount}</div><div class="l">To moderate</div></div>
+        <div class="stat amber click" onclick="showTab('moderation')"><div class="ic">🚩</div><div class="n">${o.reports.count}</div><div class="l">Reports</div></div>
+        <div class="stat pink click" onclick="showTab('signups')"><div class="ic">🌱</div><div class="n">${last7}</div><div class="l">Signups this week</div></div>
+      </div>
+
+      ${attention.length ? `
+        <h2 class="section">Up next</h2>
+        ${attention.map(a => `
+          <div class="card rowlink" onclick="showTab('${a.tab}')" style="cursor:pointer;padding:14px 18px">
+            <div class="summary"><span style="font-size:16px">${a.icon}</span>
+              <div class="grow"><h3 style="font-size:14px">${esc(a.text)}</h3><span class="sub">${fmtDate(a.when)}</span></div>
+              <span class="chev">▶</span>
             </div>
-          </div>
-        </div>`).join("") : '<div class="empty">All clear, nothing waiting on you 🎉</div>'}
+          </div>`).join("")}` : ""}
 
       <div id="checklist"></div>
-
-      <h2 class="section">Latest signups</h2>
-      ${recentSignups.length ? `<div class="card">${recentSignups.map(s => `
-        <div class="kv" style="padding:4px 0">
-          <b>${fmtDate(s.created_at)}</b>${esc(s.first_name ?? "Someone")}${s.vehicle_name ? " · " + esc(s.vehicle_name) : ""}
-        </div>`).join("")}</div>` : '<div class="empty">No signups yet</div>'}
     `;
     loadHomeChecklist();
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
@@ -500,59 +571,45 @@ async function loadTickets() {
   el.innerHTML = '<div class="empty">Loading…</div>';
   try {
     const { tickets } = await api("tickets");
+    LAST_TICKETS = tickets;
     const open = tickets.filter(t => t.status !== "closed");
     const badge = document.getElementById("ticketBadge");
     badge.style.display = open.length ? "" : "none";
     badge.textContent = open.length;
 
     if (!tickets.length) { el.innerHTML = '<div class="empty">No tickets yet</div>'; return; }
-    const render = t => `
-      <div class="card">
-        <h3>${esc(t.subject)} <span class="pill ${esc(t.status)}">${esc(t.status.replace("_", " "))}</span></h3>
-        <div class="meta">#${t.id} · ${esc(t.category)} · ${fmtDate(t.created_at)} · ${esc(t.name ?? "")} ${t.email ? "&lt;" + esc(t.email) + "&gt;" : ""} ${t.app_version ? "· v" + esc(t.app_version) : ""}</div>
-        <div class="body">${esc(t.detail)}</div>
-        <div class="thread" id="thread-${t.id}"></div>
-        <div class="actions" style="align-items:flex-start">
-          <textarea id="reply-${t.id}" rows="4" placeholder="Reply to user. Shown in their app, emailed when resolved." style="flex:1;min-width:220px;resize:vertical">${esc(t.public_reply ?? "")}</textarea>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <select class="tpl" onchange="applyTemplate(${t.id}, this)" data-name="${esc((t.name ?? "").trim().split(" ")[0])}">
-              <option value="">📋 Templates…</option>
-              ${TEMPLATES.map((tp, i) => `<option value="${i}">${esc(tp.label)}</option>`).join("")}
-            </select>
-            <button class="approve" onclick="sendReply(${t.id})">Send reply</button>
-            <button class="neutral" onclick="toggleThread(${t.id})">💬 Conversation</button>
+    const render = t => {
+      const icon = t.category === "bug" ? "🐛" : t.category === "feature" ? "💡" : "💬";
+      const sub = [t.name, t.email, t.app_version ? "v" + t.app_version : "", fmtDate(t.created_at)]
+        .filter(Boolean).map(esc).join(" · ");
+      return `
+      <div class="card rowlink" style="padding:14px 18px;cursor:pointer" onclick="openConvo(${t.id})">
+        <div class="summary">
+          <span style="font-size:18px">${icon}</span>
+          <div class="grow">
+            <h3 style="font-size:14px">${esc(t.subject)}</h3>
+            <span class="sub">${sub}</span>
           </div>
-        </div>
-        <div class="actions">
-          <input type="text" id="note-${t.id}" placeholder="Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" style="flex:1;min-width:180px">
-          <button class="neutral" onclick="saveNote(${t.id})">Save note</button>
-          ${t.status !== "in_progress" && t.status !== "closed" ? `<button class="neutral" onclick="setTicket(${t.id}, 'in_progress')">In progress</button>` : ""}
-          ${t.status !== "closed" ? `<button class="approve" onclick="resolveTicket(${t.id}, '${esc(t.email ?? "")}')">Resolve${t.email ? " &amp; email" : ""}</button>` : `<button class="neutral" onclick="setTicket(${t.id}, 'open')">Reopen</button>`}
-          <button class="delete" onclick="deleteTicket(${t.id})">Delete</button>
+          ${t.admin_note ? '<span title="Has internal note">📌</span>' : ""}
+          <span class="pill ${esc(t.status)}">${esc(t.status.replace("_", " "))}</span>
+          <span class="chev">▶</span>
         </div>
       </div>`;
+    };
+    const needsReply = tickets.filter(t => t.status === "open");
+    const inProgress = tickets.filter(t => t.status === "in_progress");
     const closed = tickets.filter(t => t.status === "closed");
     el.innerHTML =
       `<div class="stats">
-        <div class="stat"><div class="n">${open.length}</div><div class="l">Open</div></div>
-        <div class="stat"><div class="n">${closed.length}</div><div class="l">Closed</div></div>
-      </div>` +
-      '<h2 class="section">Open</h2>' + (open.length ? open.map(render).join("") : '<div class="empty">Nothing open 🎉</div>') +
-      (closed.length ? '<h2 class="section">Closed</h2>' + closed.map(render).join("") : "");
+        <div class="stat green"><div class="n">${needsReply.length}</div><div class="l">Needs a reply</div></div>
+        <div class="stat blue"><div class="n">${inProgress.length}</div><div class="l">In progress</div></div>
+        <div class="stat amber"><div class="n">${closed.length}</div><div class="l">Resolved</div></div>
+      </div>
+      <p style="color:var(--text3);font-size:13px;margin:-6px 0 14px">Tap a ticket to open the full conversation, reply, and manage it.</p>` +
+      '<h2 class="section">Needs a reply</h2>' + (needsReply.length ? needsReply.map(render).join("") : '<div class="empty">Nothing waiting 🎉</div>') +
+      (inProgress.length ? '<h2 class="section">In progress</h2>' + inProgress.map(render).join("") : "") +
+      (closed.length ? '<h2 class="section">Resolved</h2>' + closed.map(render).join("") : "");
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
-}
-async function setTicket(id, status) {
-  try {
-    await api("updateTicket", { id, status });
-    toast("Ticket " + status.replace("_", " "));
-    loadTickets();
-  } catch (e) { toast("Failed: " + e.message); }
-}
-async function saveNote(id) {
-  try {
-    await api("updateTicket", { id, admin_note: document.getElementById("note-" + id).value });
-    toast("Note saved");
-  } catch (e) { toast("Failed: " + e.message); }
 }
 // Free, offline reply templates. {name} becomes the user's first name
 // (or "there" when we don't have one). Edit these to taste.
@@ -564,58 +621,131 @@ const TEMPLATES = [
   { label: "Can't reproduce", text: "Hi {name}, thanks for the report. We've tried to reproduce this on our end but haven't been able to so far. If it happens again, could you note what screen you were on and what you tapped just before? That would really help." },
   { label: "Resolved, thanks", text: "Hi {name}, this has now been resolved. Thank you again for taking the time to report it, and we hope the app is even better for you from here. If anything else comes up, don't hesitate to get in touch." },
 ];
-function applyTemplate(id, sel) {
-  if (sel.value === "") return;
-  const name = sel.dataset.name || "there";
-  document.getElementById("reply-" + id).value = TEMPLATES[Number(sel.value)].text.replaceAll("{name}", name);
+// ── Full-screen conversation window (the ticket workspace) ───────────
+let convoId = null;
+
+function convoTicket() { return LAST_TICKETS.find(x => x.id === convoId); }
+
+function applyConvoTemplate(sel) {
+  if (sel.value === "" || convoId == null) return;
+  const t = convoTicket();
+  const name = (t?.name ?? "").trim().split(" ")[0] || "there";
+  document.getElementById("convoDraft").value = TEMPLATES[Number(sel.value)].text.replaceAll("{name}", name);
   sel.value = "";
-  toast("Template applied. Tweak it, then Send reply");
 }
-async function sendReply(id) {
-  const text = document.getElementById("reply-" + id).value.trim();
-  if (!text) { toast("Write a reply first"); return; }
+
+function renderConvoHeader() {
+  const t = convoTicket();
+  document.getElementById("convoTitle").textContent = t ? t.subject : "Ticket #" + convoId;
+  const pill = document.getElementById("convoPill");
+  pill.className = "pill " + (t ? t.status : "");
+  pill.textContent = t ? t.status.replace("_", " ") : "";
+
+  const actions = document.getElementById("convoActions");
+  if (!t) { actions.innerHTML = ""; return; }
+  actions.innerHTML = `
+    <span class="sub" style="color:var(--text3);font-size:12px">${t.category === "bug" ? "🐛 Bug" : t.category === "feature" ? "💡 Feature idea" : "💬 Other"} · #${t.id}${t.email ? " · " + esc(t.email) : ""}${t.app_version ? " · v" + esc(t.app_version) : ""}</span>
+    <span style="flex:1"></span>
+    <input type="text" id="convoNote" placeholder="📌 Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" style="max-width:280px" onchange="saveConvoNote()">
+    ${t.status === "open" ? `<button class="neutral" onclick="setConvoStatus('in_progress')">Mark in progress</button>` : ""}
+    ${t.status !== "closed"
+      ? `<button class="approve" onclick="resolveConvo()">Resolve${t.email ? " &amp; email" : ""}</button>`
+      : `<button class="neutral" onclick="setConvoStatus('open')">Reopen</button>`}
+    <button class="delete" onclick="deleteConvoTicket()">Delete</button>`;
+}
+
+function openConvo(id) {
+  convoId = id;
+  document.getElementById("convoDraft").value = "";
+  document.getElementById("convo").classList.add("open");
+  renderConvoHeader();
+  loadConvo();
+}
+function closeConvo() {
+  document.getElementById("convo").classList.remove("open");
+  convoId = null;
+  loadTickets();
+}
+async function setConvoStatus(status) {
   try {
-    await api("adminReply", { id, text });
-    toast("Reply sent. The user will see it in the app");
-    const threadEl = document.getElementById("thread-" + id);
-    if (threadEl && threadEl.classList.contains("open")) loadThread(id);
+    await api("updateTicket", { id: convoId, status });
+    const t = convoTicket();
+    if (t) t.status = status;
+    renderConvoHeader();
+    toast(status === "in_progress" ? "Marked in progress" : "Reopened");
   } catch (e) { toast("Failed: " + e.message); }
 }
-async function toggleThread(id) {
-  const el = document.getElementById("thread-" + id);
-  el.classList.toggle("open");
-  if (el.classList.contains("open")) loadThread(id);
-}
-async function loadThread(id) {
-  const el = document.getElementById("thread-" + id);
-  el.innerHTML = '<div class="empty" style="padding:12px 0">Loading…</div>';
-  try {
-    const { messages } = await api("ticketThread", { id });
-    el.innerHTML = messages.length ? messages.map(m => `
-      <div class="bubble ${esc(m.sender)}">
-        <div class="who">${m.sender === "admin" ? "You" : "User"} · ${fmtDate(m.created_at)}</div>${esc(m.text)}
-      </div>`).join("") : '<div class="empty" style="padding:12px 0">No messages yet. Send a reply to start the conversation.</div>';
-  } catch (e) { el.innerHTML = `<div class="empty err" style="padding:12px 0">Failed: ${esc(e.message)}</div>`; }
-}
-async function resolveTicket(id, email) {
-  const msg = email
-    ? `Resolve this ticket? ${email} will get a resolution email (including your reply, if you wrote one).`
+async function resolveConvo() {
+  const t = convoTicket();
+  const msg = t?.email
+    ? `Resolve this ticket? ${t.email} will get a resolution email including your latest reply.`
     : "Resolve this ticket? The user will see it as Resolved in the app.";
   if (!confirm(msg)) return;
   try {
-    const r = await api("updateTicket", { id, status: "closed", public_reply: document.getElementById("reply-" + id).value });
+    const r = await api("updateTicket", { id: convoId, status: "closed" });
+    if (t) t.status = "closed";
+    renderConvoHeader();
     toast(r.emailed ? "Resolved, user emailed ✓" : "Resolved ✓ (no email on this ticket)");
-    loadTickets();
   } catch (e) { toast("Failed: " + e.message); }
 }
-async function deleteTicket(id) {
-  if (!confirm("Permanently delete this ticket?")) return;
+async function saveConvoNote() {
   try {
-    await api("deleteTicket", { id });
-    toast("Ticket deleted");
-    loadTickets();
+    const note = document.getElementById("convoNote").value;
+    await api("updateTicket", { id: convoId, admin_note: note });
+    const t = convoTicket();
+    if (t) t.admin_note = note;
+    toast("Note saved");
   } catch (e) { toast("Failed: " + e.message); }
 }
+async function deleteConvoTicket() {
+  if (!confirm("Permanently delete this ticket and its conversation?")) return;
+  try {
+    await api("deleteTicket", { id: convoId });
+    toast("Ticket deleted");
+    closeConvo();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+async function loadConvo() {
+  if (convoId == null) return;
+  const el = document.getElementById("convoMsgs");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const t = LAST_TICKETS.find(x => x.id === convoId);
+    const { messages } = await api("ticketThread", { id: convoId });
+    let html = "";
+    if (t) {
+      html += `<div class="bubble user"><div class="who">${esc(t.name || "User")} · original report · ${fmtDate(t.created_at)}</div>${esc(t.detail)}</div>`;
+    }
+    html += messages.map(m => `
+      <div class="bubble ${esc(m.sender)}">
+        <div class="who">${m.sender === "admin" ? "You" : esc(t?.name || "User")} · ${fmtDate(m.created_at)}</div>${esc(m.text)}
+      </div>`).join("");
+    if (!messages.length) html += '<div class="empty" style="padding:16px 0">No replies yet. Say hello below 👇</div>';
+    el.innerHTML = html;
+    el.scrollTop = el.scrollHeight;
+  } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
+}
+async function sendConvo() {
+  const draft = document.getElementById("convoDraft");
+  const text = draft.value.trim();
+  if (!text || convoId == null) return;
+  try {
+    await api("adminReply", { id: convoId, text });
+    draft.value = "";
+    const t = convoTicket();
+    if (t && t.status === "open") t.status = "in_progress";
+    if (t) t.public_reply = text;
+    renderConvoHeader();
+    loadConvo();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+// Fill the conversation window's template picker once at boot.
+(function () {
+  const sel = document.getElementById("convoTpl");
+  sel.innerHTML = '<option value="">📋 Templates…</option>' +
+    TEMPLATES.map((tp, i) => `<option value="${i}">${esc(tp.label)}</option>`).join("");
+})();
 
 // ── Signups ───────────────────────────────────────────────────────────
 async function loadSignups() {
