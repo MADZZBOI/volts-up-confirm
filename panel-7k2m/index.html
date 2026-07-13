@@ -376,15 +376,19 @@ async function loadModeration() {
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
 }
 async function moderate(type, id, decision) {
-  await api("moderate", { type, id, decision });
-  toast(decision === "approve" ? "Approved ✓" : "Rejected");
-  loadModeration();
+  try {
+    await api("moderate", { type, id, decision });
+    toast(decision === "approve" ? "Approved ✓" : "Rejected");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
 }
 async function deleteReport(id) {
   if (!confirm("Dismiss (delete) this report?")) return;
-  await api("deleteReport", { id });
-  toast("Report dismissed");
-  loadModeration();
+  try {
+    await api("deleteReport", { id });
+    toast("Report dismissed");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
 }
 
 // ── Tickets ───────────────────────────────────────────────────────────
@@ -431,13 +435,17 @@ async function loadTickets() {
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
 }
 async function setTicket(id, status) {
-  await api("updateTicket", { id, status });
-  toast("Ticket " + status.replace("_", " "));
-  loadTickets();
+  try {
+    await api("updateTicket", { id, status });
+    toast("Ticket " + status.replace("_", " "));
+    loadTickets();
+  } catch (e) { toast("Failed: " + e.message); }
 }
 async function saveNote(id) {
-  await api("updateTicket", { id, admin_note: document.getElementById("note-" + id).value });
-  toast("Note saved");
+  try {
+    await api("updateTicket", { id, admin_note: document.getElementById("note-" + id).value });
+    toast("Note saved");
+  } catch (e) { toast("Failed: " + e.message); }
 }
 // Free, offline reply templates. {name} becomes the user's first name
 // (or "there" when we don't have one). Edit these to taste.
@@ -457,23 +465,29 @@ function applyTemplate(id, sel) {
   toast("Template applied — tweak it, then Save reply");
 }
 async function saveReply(id) {
-  await api("updateTicket", { id, public_reply: document.getElementById("reply-" + id).value });
-  toast("Reply saved — visible in the user's app");
+  try {
+    await api("updateTicket", { id, public_reply: document.getElementById("reply-" + id).value });
+    toast("Reply saved — visible in the user's app");
+  } catch (e) { toast("Failed: " + e.message); }
 }
 async function resolveTicket(id, email) {
   const msg = email
     ? `Resolve this ticket? ${email} will get a resolution email (including your reply, if you wrote one).`
     : "Resolve this ticket? The user will see it as Resolved in the app.";
   if (!confirm(msg)) return;
-  const r = await api("updateTicket", { id, status: "closed", public_reply: document.getElementById("reply-" + id).value });
-  toast(r.emailed ? "Resolved — user emailed ✓" : "Resolved ✓");
-  loadTickets();
+  try {
+    const r = await api("updateTicket", { id, status: "closed", public_reply: document.getElementById("reply-" + id).value });
+    toast(r.emailed ? "Resolved — user emailed ✓" : "Resolved ✓ (no email on this ticket)");
+    loadTickets();
+  } catch (e) { toast("Failed: " + e.message); }
 }
 async function deleteTicket(id) {
   if (!confirm("Permanently delete this ticket?")) return;
-  await api("deleteTicket", { id });
-  toast("Ticket deleted");
-  loadTickets();
+  try {
+    await api("deleteTicket", { id });
+    toast("Ticket deleted");
+    loadTickets();
+  } catch (e) { toast("Failed: " + e.message); }
 }
 
 // ── Signups ───────────────────────────────────────────────────────────
